@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt        DateTime         @default(now())
+  verifiedAt       DateTime?
+  email            String           @unique
+  name             String
+  passwordHash     String
+  photoProfile     String?
+  sessions         Session[]
+  participates     Event[]          @relation("EventAttendees")
+  events           Event[]
+  eventAttendees   EventAttendees[]
+  asReceptionistIn Receptionist[]
+}
+
+model Session {
+  id        String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String   @db.Uuid
+  nonce     String
+  expires   DateTime
+
+  @@unique([userId, nonce])
+}
+
+model Event {
+  id             String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime?        @updatedAt @map("updated_at")
+  deletedAt      DateTime?        @map("deleted_at")
+  createdById    String?          @map("created_by_id") @db.Uuid
+  createdBy      User?            @relation(fields: [createdById], references: [id])
+  title          String
+  description    String
+  startDate      DateTime         @map("start_date")
+  endDate        DateTime         @map("end_date")
+  address        String?
+  latitude       Float?
+  longitude      Float?
+  radius         Int?
+  fee            Float?
+  photo          String?
+  attendees      User[]           @relation("EventAttendees")
+  eventAttendees EventAttendees[]
+  receptionists  Receptionist[]
+
+  @@index([createdById])
+  @@map("Events")
+}
+
+model EventAttendees {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime? @updatedAt @map("updated_at")
+  deletedAt   DateTime? @map("deleted_at")
+  event       Event     @relation(fields: [eventId], references: [id])
+  eventId     String    @map("event_id") @db.Uuid
+  user        User      @relation(fields: [userId], references: [id])
+  userId      String    @map("user_id") @db.Uuid
+  arrivalTime DateTime? @map("arrival_time")
+
+  @@unique([eventId, userId])
+  @@map("Participate")
+}
+
+model Receptionist {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  eventId   String    @db.Uuid
+  event     Event     @relation(fields: [eventId], references: [id])
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@unique([eventId, userId])
+  @@map("Receptions")
+}
